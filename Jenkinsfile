@@ -1,54 +1,122 @@
-pipeline {
-    agent any 
+Skip to content
+Search or jump to…
+Pull requests
+Issues
+Codespaces
+Marketplace
+Explore
+ 
+@Iman-khayat 
+henrikboulund
+/
+CalculatorPipeline
+Public
+forked from tboulund-devops/CalculatorPipeline
+Fork your own copy of henrikboulund/CalculatorPipeline
+Code
+Pull requests
+Actions
+Projects
+Security
+Insights
+Beta Try the new code view
+CalculatorPipeline/Jenkinsfile
+@henrikboulund
+henrikboulund Update Jenkinsfile
+Latest commit a3c90cc yesterday
+ History
+ 2 contributors
+@henrikboulund@tboulund
+76 lines (70 sloc)  1.89 KB
 
-    //define variables for later use
-    //for predefined ones use 'http://10.176.129.14:8080/env-vars.html/'
-    environment {
-        NEW_VERSION = '1.0'
-    }
-    
-    stages {
-        stage("build") {
-            //print and use of variable (for ${} use " instead of ')
-            echo "building version ... ${NEW_VERSION}" 
-            //do stuff
-        }
-
-        
-        stage("test") {
-            when {
-                //when condition to execute on a condition
-                expression{ 
-                    params.executeTests //same as params.executeTest == True
-                }
-            }
-            echo 'testing... '
-            //do stuff
-        }
-    
-        stage("deploy") {
-            when { 
-                expression {
-                    BRANCH_NAME == 'dev'
-                    //boolean expression
-                }
-            }
-            echo 'deploying... '
-            //do stuff
-        }
+pipeline{
+    agent any
+    triggers
+    {
+        pollSCM("* * * * *")
     }
 
-    post {
-        always {
-            //actions that always happen after pipeline
+    stages{
+        stage("STARTUP")
+        {
+            steps{
+                dir("Tests")
+                {
+                    sh "rm -rf TestResults"
+                }
+            }
         }
-        
-        success {
-            //do stuff if pipeline was successfull
+        stage("BUILD"){
+            steps{
+
+                sh "dotnet build CalculatorPipeline.sln"
+            }
+            post{
+                always{
+                    echo "========always========"
+                }
+                success{
+                    echo "========A executed successfully========"
+                }
+                failure{
+                    echo "========A execution failed========"
+                }
+            }
         }
 
-        failure {
-            //do stuff on failure
+        stage("TEST")
+        {
+            steps
+            {
+                dir("Tests")
+                {
+                    sh "dotnet add package coverlet.collector"
+                    sh "dotnet test --collect:'XPlat Code Coverage'"
+                }
+            }
+            post
+            {
+                success
+                {
+                    archiveArtifacts "Tests/TestResults/*/coverage.cobertura.xml"
+                    publishCoverage adapters: [istanbulCoberturaAdapter(path: 'Tests/TestResults/*/coverage.cobertura.xml', thresholds: [[failUnhealthy: true, thresholdTarget: 'Conditional', unhealthyThreshold: 80.0, unstableThreshold: 50.0]])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE')
+                }
+            }
+            
+        }
+
+        stage("DEPLOY")
+        {
+            steps{
+                echo "DEPLOY!!!"
+            }
+            
+        }
+    }
+    post{
+        always{
+            echo "========always========"
+        }
+        success{
+            echo "========pipeline executed successfully ========"
+        }
+        failure{
+            echo "========pipeline execution failed========"
         }
     }
 }
+Footer
+© 2023 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Docs
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
+CalculatorPipeline/Jenkinsfile at master · henrikboulund/CalculatorPipeline
